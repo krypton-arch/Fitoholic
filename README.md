@@ -2,7 +2,7 @@
 
 Fitoholic is a premium, AI-powered fitness tracking application built specifically for the Indian audience. It combines an editorial, high-end "Zenith" aesthetic (glassmorphism, tailored dark themes, and refined typography) with robust, data-driven fitness tooling.
 
-## 🚀 Features
+## Features
 
 * **Premium "Zenith" Design System:** 
   Built from the ground up with a bespoke dark-mode aesthetic. Features glassmorphic cards, subtle borders, hairline dividers, and a strict typographic scale using `Outfit` (Headings) and `Inter` (Body).
@@ -18,7 +18,7 @@ Fitoholic is a premium, AI-powered fitness tracking application built specifical
 * **Premium Subscriptions:**
   Integrated with Razorpay for secure checkout to unlock AI protocols and advanced analytics.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 * **Framework:** Next.js 16 (App Router)
 * **Language:** TypeScript
@@ -31,7 +31,7 @@ Fitoholic is a premium, AI-powered fitness tracking application built specifical
 
 ---
 
-## 💻 Local Setup & Development
+## Local Setup & Development
 
 ### 1. Environment Variables
 Create a `.env` file in the root directory and populate it with your keys:
@@ -72,5 +72,5 @@ npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## 🤝 Contributing
+## Contributing
 Fitoholic was built using an autonomous subagent-driven development pipeline. Contributions and pull requests to expand the feature set (like the upcoming Meal Planner) are welcome!
