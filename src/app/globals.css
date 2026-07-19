@@ -1,26 +1,189 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Zenith Aesthetic Colors */
+  --color-background: #080808;
+  --color-on-background: #f9f9f6;
+  
+  --color-surface: #111111;
+  --color-surface-container: #181818;
+  --color-surface-container-high: #1c1c1c;
+  --color-surface-container-highest: #222222;
+  --color-on-surface: #f9f9f6;
+  --color-on-surface-variant: #a3a3a3;
+  --color-outline: #333333;
+  --color-outline-variant: #222222;
+
+  --color-primary: #123524;
+  --color-on-primary: #f9f9f6;
+  --color-primary-container: #1a4d35;
+  --color-on-primary-container: #e8f5e9;
+  
+  --color-secondary: #d4af37;
+  --color-on-secondary: #080808;
+  --color-secondary-container: #a6841e;
+  --color-on-secondary-container: #fdf5e6;
+  
+  --color-tertiary: #e07a5f;
+  --color-on-tertiary: #1a1a1a;
+  --color-tertiary-container: #753b2c;
+  --color-on-tertiary-container: #fcebe6;
+
+  --color-error: #cf6679;
+  --color-on-error: #1a1a1a;
+  --color-error-container: #b00020;
+  --color-on-error-container: #ffffff;
+
+  /* Zenith Spacing */
+  --spacing-container-max: 1280px;
+  --spacing-margin-mobile: 24px;
+  --spacing-margin-desktop: 80px;
+  --spacing-unit: 8px;
+  --spacing-gutter: 32px;
+
+  /* Zenith Typography Mappings */
+  --font-display-lg-mobile: 'Playfair Display', serif;
+  --font-headline-md: 'Playfair Display', serif;
+  --font-display-lg: 'Playfair Display', serif;
+  
+  --font-body-lg: 'Inter Tight', sans-serif;
+  --font-label-sm: 'Inter Tight', sans-serif;
+  --font-body-md: 'Inter Tight', sans-serif;
+  --font-label-caps: 'Inter Tight', sans-serif;
+
+  /* Font Sizes & Weights */
+  --text-display-lg: 64px;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 500;
+
+  --text-display-lg-mobile: 40px;
+  --text-display-lg-mobile--line-height: 1.1;
+  --text-display-lg-mobile--letter-spacing: -0.02em;
+  --text-display-lg-mobile--font-weight: 500;
+
+  --text-headline-md: 32px;
+  --text-headline-md--line-height: 1.2;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 500;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--letter-spacing: 0.01em;
+  --text-body-lg--font-weight: 300;
+
+  --text-body-md: 15px;
+  --text-body-md--line-height: 1.6;
+  --text-body-md--letter-spacing: 0.01em;
+  --text-body-md--font-weight: 300;
+
+  --text-label-caps: 11px;
+  --text-label-caps--line-height: 1.2;
+  --text-label-caps--letter-spacing: 0.15em;
+  --text-label-caps--font-weight: 500;
+  
+  --text-stat-value: 36px;
+  --text-stat-value--font-weight: 400;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+    @apply antialiased;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 
+ * Zenith Aesthetic Utilities 
+ */
+
+/* Editorial Card replacing glass-card */
+.editorial-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 2px;
+  box-shadow: none;
+  transition: border-color 0.4s ease;
+}
+
+.editorial-card:hover {
+  border-color: var(--color-outline);
+}
+
+/* Inputs - Minimal border-bottom */
+.editorial-input {
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 4px;
+  padding-left: 12px;
+  padding-right: 12px;
+  transition: all 0.3s ease;
+}
+
+.editorial-input:focus {
+  outline: none;
+  border-color: var(--color-secondary);
+  background: var(--color-surface-container-high);
+}
+
+.editorial-button {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+.editorial-button:hover {
+  background-color: var(--color-primary-container);
+}
+
+/* Grain Overlay to give digital screens a physical print feel */
+.grain-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Staggered Entrance Animation */
+@keyframes fadeUpEditorial {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fadeUpEditorial 0.8s cubic-bezier(0.2, 0, 0, 1) forwards;
+  opacity: 0;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 2px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+.hide-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

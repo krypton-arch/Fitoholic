@@ -1,0 +1,384 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum MetricType {
+  STEPS
+  CALORIES_BURNED
+  HEART_RATE
+  SLEEP
+  ACTIVITY
+}
+
+enum DataSource {
+  SYNCED
+  MANUAL
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum PaymentStatus {
+  CREATED
+  PAID
+  FAILED
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+// ─── User & Auth ─────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?  // null if OAuth-only user
+  name         String
+  bio          String?
+  role         Role     @default(USER)
+  isPremium    Boolean  @default(false)
+  theme        Theme    @default(SYSTEM)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  aiWorkoutPlan Json?
+  aiMealPlan    Json?
+
+  // Password reset
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
+
+  // Relations
+  oauthIdentities   OAuthIdentity[]
+  fitnessSyncTokens FitnessSyncToken[]
+  fitnessDataPoints FitnessDataPoint[]
+  dailyLogs         DailyLog[]
+  mealEntries       MealEntry[]
+  workoutLogs       WorkoutLog[]
+  userWorkoutPlans  UserWorkoutPlan[]
+  mealPlans         MealPlan[]
+  payments          Payment[]
+  chatMessages      ChatMessage[]
+
+  @@index([email])
+}
+
+model OAuthIdentity {
+  id             String   @id @default(cuid())
+  userId         String
+  provider       String   // "google"
+  providerUserId String
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+// ─── Fitness Sync ────────────────────────────────────────────────────
+
+model FitnessSyncToken {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String   // "google_health"
+  accessToken  String   // encrypted
+  refreshToken String   // encrypted
+  scopes       String[] // e.g. ["activity", "sleep"]
+  expiresAt    DateTime
+  lastSyncAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+model FitnessDataPoint {
+  id         String     @id @default(cuid())
+  userId     String
+  metricType MetricType
+  value      Float
+  unit       String     // "steps", "kcal", "bpm", "minutes", "hours"
+  source     DataSource
+  recordedAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, metricType, recordedAt])
+  @@index([userId, recordedAt])
+}
+
+// ─── Daily Logs (manual) ─────────────────────────────────────────────
+
+model DailyLog {
+  id             String   @id @default(cuid())
+  userId         String
+  date           DateTime @db.Date
+  steps          Int?
+  caloriesBurned Int?
+  waterMl        Int?
+  weightKg       Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+// ─── Nutrition / Food ────────────────────────────────────────────────
+
+model Food {
+  id              String  @id @default(cuid())
+  name            String
+  category        String? // "grain", "vegetable", "dal", "curry", "snack", etc.
+  caloriesPer100g Float
+  proteinG        Float   // per 100g
+  carbsG          Float   // per 100g
+  fatG            Float   // per 100g
+  fiberG          Float?  // per 100g
+  servingSizeG    Float?
+  source          String  @default("INDB") // "INDB", "manual", "custom"
+
+  aliases     FoodAlias[]
+  mealEntries MealEntry[]
+  mealPlanEntries MealPlanEntry[]
+
+  @@index([name])
+}
+
+model FoodAlias {
+  id       String  @id @default(cuid())
+  foodId   String
+  alias    String
+  language String? // "hindi", "tamil", "telugu", "kannada", "bengali", "marathi"
+
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@index([alias])
+  @@index([foodId])
+}
+
+model MealEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  foodId       String
+  mealType     MealType
+  quantityG    Float
+  portionLabel String?  // "1 katori", "2 rotis", "1 idli"
+  loggedAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  food Food @relation(fields: [foodId], references: [id])
+
+  @@index([userId, loggedAt])
+}
+
+// ─── Exercises & Workouts ────────────────────────────────────────────
+
+model Exercise {
+  id           String     @id @default(cuid())
+  name         String
+  muscleGroup  String     // "chest", "back", "shoulders", "legs", "biceps", "triceps", "core", "full_body"
+  equipment    String?    // "bodyweight", "dumbbell", "barbell", "machine", "cable", "kettlebell"
+  difficulty   Difficulty @default(BEGINNER)
+  instructions String?
+  mediaUrl     String?
+
+  workoutLogs         WorkoutLog[]
+  workoutPlanExercises WorkoutPlanExercise[]
+  userWorkoutPlanExercises UserWorkoutPlanExercise[]
+
+  @@index([muscleGroup])
+  @@index([name])
+}
+
+// Curated workout plans
+model WorkoutPlan {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  isCurated   Boolean @default(true)
+
+  days WorkoutPlanDay[]
+}
+
+model WorkoutPlanDay {
+  id            String @id @default(cuid())
+  workoutPlanId String
+  dayNumber     Int    // 1-7
+
+  plan      WorkoutPlan           @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  exercises WorkoutPlanExercise[]
+
+  @@unique([workoutPlanId, dayNumber])
+  @@index([workoutPlanId])
+}
+
+model WorkoutPlanExercise {
+  id               String @id @default(cuid())
+  workoutPlanDayId String
+  exerciseId       String
+  order            Int    @default(0)
+  sets             Int?
+  reps             String? // "8-12", "to failure", etc.
+
+  day      WorkoutPlanDay @relation(fields: [workoutPlanDayId], references: [id], onDelete: Cascade)
+  exercise Exercise       @relation(fields: [exerciseId], references: [id])
+
+  @@index([workoutPlanDayId])
+}
+
+// Workout logging
+model WorkoutLog {
+  id          String   @id @default(cuid())
+  userId      String
+  exerciseId  String
+  sets        Int
+  reps        Int
+  weightKg    Float?
+  performedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@index([userId, performedAt])
+  @@index([userId, exerciseId, performedAt])
+}
+
+// User-created workout plans
+model UserWorkoutPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days UserWorkoutPlanDay[]
+
+  @@index([userId])
+}
+
+model UserWorkoutPlanDay {
+  id                 String @id @default(cuid())
+  userWorkoutPlanId  String
+  dayOfWeek          Int    // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+  plan      UserWorkoutPlan             @relation(fields: [userWorkoutPlanId], references: [id], onDelete: Cascade)
+  exercises UserWorkoutPlanExercise[]
+
+  @@unique([userWorkoutPlanId, dayOfWeek])
+  @@index([userWorkoutPlanId])
+}
+
+model UserWorkoutPlanExercise {
+  id                    String @id @default(cuid())
+  userWorkoutPlanDayId  String
+  exerciseId            String
+  order                 Int    @default(0)
+  targetSets            Int?
+  targetReps            String? // "8-12", "to failure"
+
+  day      UserWorkoutPlanDay @relation(fields: [userWorkoutPlanDayId], references: [id], onDelete: Cascade)
+  exercise Exercise           @relation(fields: [exerciseId], references: [id])
+
+  @@index([userWorkoutPlanDayId])
+}
+
+// ─── Meal Plans ──────────────────────────────────────────────────────
+
+model MealPlan {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  isActive      Boolean   @default(false)
+  weekStartDate DateTime? @db.Date
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries MealPlanEntry[]
+
+  @@index([userId])
+}
+
+model MealPlanEntry {
+  id           String   @id @default(cuid())
+  mealPlanId   String
+  dayOfWeek    Int      // 0-6
+  mealType     MealType
+  foodId       String
+  quantityG    Float
+  portionLabel String?
+
+  plan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  food Food     @relation(fields: [foodId], references: [id])
+
+  @@index([mealPlanId])
+}
+
+// ─── Payments ────────────────────────────────────────────────────────
+
+model Payment {
+  id                String        @id @default(cuid())
+  userId            String
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?       @unique
+  amount            Int           // in paise (e.g. 49900 = ₹499)
+  status            PaymentStatus @default(CREATED)
+  createdAt         DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── Chat ────────────────────────────────────────────────────────────
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      ChatRole
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}

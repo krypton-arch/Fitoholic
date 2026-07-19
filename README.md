@@ -1,6 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fitoholic
 
-## Getting Started
+Fitoholic is a premium fitness tracking application built specifically for the Indian audience.
+
+## INDB Dataset Import
+
+We use the **Indian Nutrient Databank (INDB)** for authentic Indian food tracking (built off the ICMR-NIN IFCT tables). Due to licensing restrictions on the raw data, the dataset files are not checked into this repository.
+
+To import the INDB dataset (1,014 authentic Indian recipes) into your local database:
+
+1. Download the following files from the official repository: [INDB GitHub Repo](https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-)
+   - `INDB.xlsx`
+   - `recipes_names.xlsx`
+   - `recipes_servingsize.xlsx`
+2. Create a folder named `indb` inside `d:\Project\Fitoholic 2.0\data\` (i.e. `data/indb/`).
+3. Place all 3 Excel files in that folder.
+4. Run the import script:
+   ```bash
+   npm run import:indb
+   ```
+This script will parse the excel files, resolve data quirks, and cleanly insert them into your local Postgres database.
+
+---
 
 First, run the development server:
 
