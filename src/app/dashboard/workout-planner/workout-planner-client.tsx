@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/toast-provider';
+import { useLiveWorkoutStore, LiveExercise, LiveSet } from '@/store/use-live-workout-store';
+import { useRouter } from 'next/navigation';
 
 export function WorkoutPlannerClient() {
   const { toast } = useToast();
+  const router = useRouter();
+  const startWorkout = useLiveWorkoutStore(s => s.startWorkout);
   const [goals, setGoals] = useState('');
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
@@ -93,6 +97,41 @@ export function WorkoutPlannerClient() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const launchLiveWorkout = (exercises: any[]) => {
+    // Map AI exercises to LiveWorkoutStore format
+    const liveExercises: LiveExercise[] = exercises.map(ex => {
+      // Try to parse reps, e.g. "8-12" -> 10, "10" -> 10, "to failure" -> 0
+      let parsedReps = 0;
+      if (typeof ex.reps === 'string') {
+        const match = ex.reps.match(/(\d+)/g);
+        if (match && match.length === 2) {
+          parsedReps = Math.floor((parseInt(match[0]) + parseInt(match[1])) / 2);
+        } else if (match && match.length === 1) {
+          parsedReps = parseInt(match[0]);
+        }
+      } else if (typeof ex.reps === 'number') {
+        parsedReps = ex.reps;
+      }
+
+      const sets: LiveSet[] = Array.from({ length: parseInt(ex.sets) || 3 }).map(() => ({
+        id: crypto.randomUUID(),
+        weight: 0,
+        reps: parsedReps,
+        completed: false
+      }));
+
+      return {
+        id: crypto.randomUUID(),
+        exerciseId: ex.exerciseId || 'unknown', // Will be populated by the AI thanks to prompt injection
+        name: ex.name || 'Unknown Exercise',
+        sets
+      };
+    });
+
+    startWorkout(undefined, liveExercises);
+    router.push('/dashboard/workouts/live');
   };
 
   return (
@@ -242,6 +281,18 @@ export function WorkoutPlannerClient() {
                     ) : (
                       <div className="flex items-center justify-center h-full py-12 text-on-surface-variant font-body-md italic border border-outline-variant/30 rounded-none">
                         Rest Day — Active recovery and reflection.
+                      </div>
+                    )}
+                    
+                    {!isRest && (
+                      <div className="mt-4 flex justify-end">
+                        <button 
+                          onClick={() => launchLiveWorkout(dayPlan.exercises)}
+                          className="editorial-button px-6 py-3 font-label-caps text-[11px] uppercase tracking-widest flex items-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">play_arrow</span>
+                          Launch Live Session
+                        </button>
                       </div>
                     )}
                   </div>
