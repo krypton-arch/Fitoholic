@@ -3,11 +3,14 @@ import { useState } from 'react';
 import { useLiveWorkoutStore } from '@/store/use-live-workout-store';
 import { LiveWorkoutTimer } from '@/components/dashboard/live-workout/live-workout-timer';
 import { LiveWorkoutList } from '@/components/dashboard/live-workout/live-workout-list';
+import { ExerciseSearchModal } from '@/components/dashboard/live-workout/exercise-search-modal';
 import { useRouter } from 'next/navigation';
 
 export default function LiveWorkoutPage() {
   const { isActive, exercises, workoutStartTime, finishWorkout, cancelWorkout } = useLiveWorkoutStore();
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const router = useRouter();
 
   if (!isActive) {
@@ -20,13 +23,26 @@ export default function LiveWorkoutPage() {
   }
 
   const handleFinish = async () => {
-    const duration = workoutStartTime ? Math.floor((Date.now() - workoutStartTime) / 60000) : 0;
-    await fetch('/api/workouts/live', {
-      method: 'POST',
-      body: JSON.stringify({ exercises, duration })
-    });
-    finishWorkout();
-    router.push('/dashboard');
+    try {
+      setIsSubmitting(true);
+      const duration = workoutStartTime ? Math.floor((Date.now() - workoutStartTime) / 60000) : 0;
+      const res = await fetch('/api/workouts/live', {
+        method: 'POST',
+        body: JSON.stringify({ exercises, duration })
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to save workout');
+      }
+      
+      finishWorkout();
+      router.push('/dashboard');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to save workout. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDiscard = () => {
@@ -40,21 +56,28 @@ export default function LiveWorkoutPage() {
       <header className="px-6 py-8 border-b border-outline-variant flex justify-between items-center sticky top-0 bg-background/90 backdrop-blur z-40">
         {isCanceling ? (
           <div className="w-full flex gap-4">
-            <button onClick={handleDiscard} className="text-error font-label-caps text-[11px] uppercase tracking-widest flex-1 border border-error py-2">Discard</button>
-            <button onClick={handleFinish} className="editorial-button font-label-caps text-[11px] uppercase tracking-widest flex-1 py-2">Save Incomplete</button>
-            <button onClick={() => setIsCanceling(false)} className="text-on-surface-variant"><span className="material-symbols-outlined">close</span></button>
+            <button onClick={handleDiscard} disabled={isSubmitting} className="text-error font-label-caps text-[11px] uppercase tracking-widest flex-1 border border-error py-2 disabled:opacity-50">Discard</button>
+            <button onClick={handleFinish} disabled={isSubmitting} className="editorial-button font-label-caps text-[11px] uppercase tracking-widest flex-1 py-2 disabled:opacity-50">
+              {isSubmitting ? 'Saving...' : 'Save Incomplete'}
+            </button>
+            <button onClick={() => setIsCanceling(false)} disabled={isSubmitting} className="text-on-surface-variant disabled:opacity-50"><span className="material-symbols-outlined">close</span></button>
           </div>
         ) : (
           <>
-            <button onClick={() => setIsCanceling(true)} className="text-on-surface-variant"><span className="material-symbols-outlined">close</span></button>
+            <button onClick={() => setIsCanceling(true)} disabled={isSubmitting} className="text-on-surface-variant disabled:opacity-50"><span className="material-symbols-outlined">close</span></button>
             <h1 className="font-outfit text-2xl">Live Session</h1>
-            <button onClick={handleFinish} className="editorial-button px-4 py-2 font-label-caps text-[11px] uppercase tracking-widest">Finish</button>
+            <button onClick={handleFinish} disabled={isSubmitting} className="editorial-button px-4 py-2 font-label-caps text-[11px] uppercase tracking-widest disabled:opacity-50">
+              {isSubmitting ? 'Saving...' : 'Finish'}
+            </button>
           </>
         )}
       </header>
       <main className="p-6 max-w-2xl mx-auto">
-        {/* We will implement LiveWorkoutList in the next task, so just mock it for now if needed, or import it and create an empty shell file for it so TypeScript doesn't complain. Actually, create an empty shell file at src/components/dashboard/live-workout/live-workout-list.tsx exporting a dummy function so the import resolves, e.g. export function LiveWorkoutList() { return null; } */}
         <LiveWorkoutList />
+        <button onClick={() => setShowAdd(true)} className="w-full py-4 mt-6 border border-dashed border-outline-variant text-on-surface-variant font-label-caps tracking-widest text-[11px] uppercase hover:text-secondary transition-colors">
+          + Add Exercise
+        </button>
+        {showAdd && <ExerciseSearchModal onClose={() => setShowAdd(false)} />}
       </main>
     </div>
   );
