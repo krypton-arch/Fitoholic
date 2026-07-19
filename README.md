@@ -1,56 +1,76 @@
-# Fitoholic
+# Fitoholic 2.0
 
-Fitoholic is a premium fitness tracking application built specifically for the Indian audience.
+Fitoholic is a premium, AI-powered fitness tracking application built specifically for the Indian audience. It combines an editorial, high-end "Zenith" aesthetic (glassmorphism, tailored dark themes, and refined typography) with robust, data-driven fitness tooling.
 
-## INDB Dataset Import
+## 🚀 Features
 
-We use the **Indian Nutrient Databank (INDB)** for authentic Indian food tracking (built off the ICMR-NIN IFCT tables). Due to licensing restrictions on the raw data, the dataset files are not checked into this repository.
+* **Premium "Zenith" Design System:** 
+  Built from the ground up with a bespoke dark-mode aesthetic. Features glassmorphic cards, subtle borders, hairline dividers, and a strict typographic scale using `Outfit` (Headings) and `Inter` (Body).
+* **Live Workout Companion (Gym Mode):**
+  A mobile-optimized, offline-tolerant live workout tracker. Powered by Zustand, your session survives network drops and page reloads. Includes swipe-to-delete Framer Motion animations, inline rest timers, and dynamic exercise searching.
+* **AI Workout Planner:**
+  Powered by Google's Gemini, the AI Planner generates bespoke 7-day training protocols based on your exact goals. 
+  * *Smart Integration:* The AI Planner is directly wired into the Live Workout Mode via prompt injection—allowing you to generate an AI routine and instantly launch it at the gym with all target sets and reps pre-loaded.
+* **Daily Metric Logging:**
+  Track your daily steps, weight, water intake, and active calories with premium interactive data visualizations using Recharts.
+* **Authentic Indian Nutrition (INDB):**
+  Support for the Indian Nutrient Databank (built off ICMR-NIN IFCT tables) to accurately track over 1,000 authentic regional Indian recipes and ingredients.
+* **Premium Subscriptions:**
+  Integrated with Razorpay for secure checkout to unlock AI protocols and advanced analytics.
 
-To import the INDB dataset (1,014 authentic Indian recipes) into your local database:
+## 🛠️ Tech Stack
 
-1. Download the following files from the official repository: [INDB GitHub Repo](https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-)
+* **Framework:** Next.js 16 (App Router)
+* **Language:** TypeScript
+* **Styling:** Tailwind CSS v4, Framer Motion
+* **Database:** PostgreSQL (via Prisma ORM)
+* **Authentication:** NextAuth.js
+* **State Management:** Zustand (with local storage persistence)
+* **AI Integration:** Google Generative AI (`@google/generative-ai`)
+* **Payments:** Razorpay
+
+---
+
+## 💻 Local Setup & Development
+
+### 1. Environment Variables
+Create a `.env` file in the root directory and populate it with your keys:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/fitoholic"
+AUTH_SECRET="your-nextauth-secret"
+GEMINI_API_KEY="your-google-gemini-key"
+NEXT_PUBLIC_RAZORPAY_KEY_ID="your-razorpay-key"
+RAZORPAY_KEY_SECRET="your-razorpay-secret"
+```
+
+### 2. Database Migration
+Ensure PostgreSQL is running locally, then push the schema:
+```bash
+npx prisma db push
+npx prisma generate
+```
+
+### 3. INDB Dataset Import (Nutrition)
+Due to licensing restrictions on the raw data, the authentic Indian nutrition dataset files are not checked into this repository. To import them locally:
+
+1. Download the following files from the official [INDB GitHub Repo](https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-):
    - `INDB.xlsx`
    - `recipes_names.xlsx`
    - `recipes_servingsize.xlsx`
-2. Create a folder named `indb` inside `d:\Project\Fitoholic 2.0\data\` (i.e. `data/indb/`).
+2. Create a folder named `indb` inside `data/` (i.e., `data/indb/`).
 3. Place all 3 Excel files in that folder.
 4. Run the import script:
    ```bash
    npm run import:indb
    ```
-This script will parse the excel files, resolve data quirks, and cleanly insert them into your local Postgres database.
 
----
-
-First, run the development server:
-
+### 4. Run the Application
+Start the Next.js development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🤝 Contributing
+Fitoholic was built using an autonomous subagent-driven development pipeline. Contributions and pull requests to expand the feature set (like the upcoming Meal Planner) are welcome!
