@@ -1,27 +1,45 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLiveWorkoutStore } from '@/store/use-live-workout-store';
-import { motion } from 'framer-motion';
+
+interface ExerciseResult {
+  id: string;
+  name: string;
+}
 
 export function ExerciseSearchModal({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<ExerciseResult[]>([]);
   const { addExercise } = useLiveWorkoutStore();
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   // Mock static search for now, assumes we have an API or list of standard exercises
-  const handleSearch = async (val: string) => {
+  const handleSearch = (val: string) => {
     setQuery(val);
-    if (val.length < 2) return setResults([]);
-    // Fetch from a public API endpoint or use a local mock array for this task
-    const mockDb = [
-      { id: 'ex-1', name: 'Barbell Squat' },
-      { id: 'ex-2', name: 'Bench Press' },
-      { id: 'ex-3', name: 'Deadlift' }
-    ];
-    setResults(mockDb.filter(e => e.name.toLowerCase().includes(val.toLowerCase())));
+
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+    searchTimeout.current = setTimeout(() => {
+      if (val.length < 2) return setResults([]);
+      // Fetch from a public API endpoint or use a local mock array for this task
+      const mockDb: ExerciseResult[] = [
+        { id: 'ex-1', name: 'Barbell Squat' },
+        { id: 'ex-2', name: 'Bench Press' },
+        { id: 'ex-3', name: 'Deadlift' }
+      ];
+      setResults(mockDb.filter(e => e.name.toLowerCase().includes(val.toLowerCase())));
+    }, 300);
   };
 
-  const handleSelect = (ex: any) => {
+  const handleSelect = (ex: ExerciseResult) => {
     addExercise({
       id: crypto.randomUUID(),
       exerciseId: ex.id,
