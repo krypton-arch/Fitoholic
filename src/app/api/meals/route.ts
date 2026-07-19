@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -9,11 +11,20 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const { searchParams } = new URL(req.url);
+    const startParam = searchParams.get('start');
+    const endParam = searchParams.get('end');
 
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
+    let startOfToday, endOfToday;
+    if (startParam && endParam) {
+      startOfToday = new Date(startParam);
+      endOfToday = new Date(endParam);
+    } else {
+      startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+    }
 
     const meals = await prisma.mealEntry.findMany({
       where: {

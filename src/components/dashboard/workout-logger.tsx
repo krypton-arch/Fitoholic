@@ -78,7 +78,12 @@ export function WorkoutLogger() {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch("/api/workouts");
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      
+      const res = await fetch(`/api/workouts?start=${start.toISOString()}&end=${end.toISOString()}`);
       if (res.ok) {
         const data = await res.json();
         setRecentLogs(data);

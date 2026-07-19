@@ -26,7 +26,11 @@ export function MealLogger() {
   const { data: meals = [], isLoading: isLoadingMeals } = useQuery({
     queryKey: ["meals"],
     queryFn: async () => {
-      const res = await fetch("/api/meals");
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      const res = await fetch(`/api/meals?start=${start.toISOString()}&end=${end.toISOString()}`);
       return res.json();
     }
   });
