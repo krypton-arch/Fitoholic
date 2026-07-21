@@ -71,6 +71,3 @@ Start the Next.js development server:
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Contributing
-Fitoholic was built using an autonomous subagent-driven development pipeline. Contributions and pull requests to expand the feature set (like the upcoming Meal Planner) are welcome!
