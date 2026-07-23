@@ -4,7 +4,9 @@ import { useLiveWorkoutStore } from '@/store/use-live-workout-store';
 
 export function LiveWorkoutTimer() {
   const activeTimerStart = useLiveWorkoutStore(s => s.activeTimerStart);
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(() => 
+    activeTimerStart ? Math.floor((Date.now() - activeTimerStart) / 1000) : 0
+  );
 
   useEffect(() => {
     if (!activeTimerStart) return;

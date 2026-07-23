@@ -1,0 +1,407 @@
+﻿diff --git a/src/app/api/workouts/live/route.ts b/src/app/api/workouts/live/route.ts
+new file mode 100644
+index 0000000..9e96434
+--- /dev/null
++++ b/src/app/api/workouts/live/route.ts
+@@ -0,0 +1,59 @@
++import { NextResponse } from 'next/server';
++import { auth } from '@/lib/auth';
++import { prisma } from '@/lib/prisma';
++import { z } from 'zod';
++
++const liveWorkoutSchema = z.object({
++  duration: z.number().min(0),
++  exercises: z.array(z.object({
++    exerciseId: z.string(),
++    sets: z.array(z.object({
++      reps: z.number().min(0),
++      weight: z.number().min(0),
++      completed: z.boolean()
++    }))
++  }))
++});
++
++export async function POST(req: Request) {
++  const session = await auth();
++  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
++
++  const body = await req.json();
++  const parsed = liveWorkoutSchema.safeParse(body);
++  
++  if (!parsed.success) {
++    return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
++  }
++
++  const { exercises, duration } = parsed.data;
++
++  try {
++    const workout = await prisma.workout.create({
++      data: {
++        userId: session.user.id,
++        name: 'Live Session',
++        date: new Date(),
++        duration: duration || 0,
++        exercises: {
++          create: exercises.map((ex, idx) => ({
++            exerciseId: ex.exerciseId,
++            order: idx,
++            sets: {
++              create: ex.sets.map((set, sIdx) => ({
++                setNumber: sIdx + 1,
++                reps: set.reps,
++                weightKg: set.weight,
++                completed: set.completed
++              }))
++            }
++          }))
++        }
++      }
++    });
++    return NextResponse.json(workout);
++  } catch (e) {
++    console.error('[WORKOUT_LIVE_POST]', e);
++    return NextResponse.json({ error: 'Failed to save workout' }, { status: 500 });
++  }
++}
+diff --git a/src/app/dashboard/workouts/live/page.tsx b/src/app/dashboard/workouts/live/page.tsx
+new file mode 100644
+index 0000000..b17440b
+--- /dev/null
++++ b/src/app/dashboard/workouts/live/page.tsx
+@@ -0,0 +1,84 @@
++'use client';
++import { useState } from 'react';
++import { useLiveWorkoutStore } from '@/store/use-live-workout-store';
++import { LiveWorkoutTimer } from '@/components/dashboard/live-workout/live-workout-timer';
++import { LiveWorkoutList } from '@/components/dashboard/live-workout/live-workout-list';
++import { ExerciseSearchModal } from '@/components/dashboard/live-workout/exercise-search-modal';
++import { useRouter } from 'next/navigation';
++
++export default function LiveWorkoutPage() {
++  const { isActive, exercises, workoutStartTime, finishWorkout, cancelWorkout } = useLiveWorkoutStore();
++  const [isCanceling, setIsCanceling] = useState(false);
++  const [isSubmitting, setIsSubmitting] = useState(false);
++  const [showAdd, setShowAdd] = useState(false);
++  const router = useRouter();
++
++  if (!isActive) {
++    return (
++      <div className="p-6 text-center">
++        <h2>No Active Workout</h2>
++        <button onClick={() => router.push('/dashboard')} className="editorial-button mt-4 px-6 py-2">Back to Dashboard</button>
++      </div>
++    );
++  }
++
++  const handleFinish = async () => {
++    try {
++      setIsSubmitting(true);
++      const duration = workoutStartTime ? Math.floor((Date.now() - workoutStartTime) / 60000) : 0;
++      const res = await fetch('/api/workouts/live', {
++        method: 'POST',
++        body: JSON.stringify({ exercises, duration })
++      });
++      
++      if (!res.ok) {
++        throw new Error('Failed to save workout');
++      }
++      
++      finishWorkout();
++      router.push('/dashboard');
++    } catch (error) {
++      console.error(error);
++      alert('Failed to save workout. Please try again.');
++    } finally {
++      setIsSubmitting(false);
++    }
++  };
++
++  const handleDiscard = () => {
++    cancelWorkout();
++    router.push('/dashboard');
++  };
++
++  return (
++    <div className="min-h-screen bg-background pb-32">
++      <LiveWorkoutTimer />
++      <header className="px-6 py-8 border-b border-outline-variant flex justify-between items-center sticky top-0 bg-background/90 backdrop-blur z-40">
++        {isCanceling ? (
++          <div className="w-full flex gap-4">
++            <button onClick={handleDiscard} disabled={isSubmitting} className="text-error font-label-caps text-[11px] uppercase tracking-widest flex-1 border border-error py-2 disabled:opacity-50">Discard</button>
++            <button onClick={handleFinish} disabled={isSubmitting} className="editorial-button font-label-caps text-[11px] uppercase tracking-widest flex-1 py-2 disabled:opacity-50">
++              {isSubmitting ? 'Saving...' : 'Save Incomplete'}
++            </button>
++            <button onClick={() => setIsCanceling(false)} disabled={isSubmitting} className="text-on-surface-variant disabled:opacity-50"><span className="material-symbols-outlined">close</span></button>
++          </div>
++        ) : (
++          <>
++            <button onClick={() => setIsCanceling(true)} disabled={isSubmitting} className="text-on-surface-variant disabled:opacity-50"><span className="material-symbols-outlined">close</span></button>
++            <h1 className="font-outfit text-2xl">Live Session</h1>
++            <button onClick={handleFinish} disabled={isSubmitting} className="editorial-button px-4 py-2 font-label-caps text-[11px] uppercase tracking-widest disabled:opacity-50">
++              {isSubmitting ? 'Saving...' : 'Finish'}
++            </button>
++          </>
++        )}
++      </header>
++      <main className="p-6 max-w-2xl mx-auto">
++        <LiveWorkoutList />
++        <button onClick={() => setShowAdd(true)} className="w-full py-4 mt-6 border border-dashed border-outline-variant text-on-surface-variant font-label-caps tracking-widest text-[11px] uppercase hover:text-secondary transition-colors">
++          + Add Exercise
++        </button>
++        {showAdd && <ExerciseSearchModal onClose={() => setShowAdd(false)} />}
++      </main>
++    </div>
++  );
++}
+diff --git a/src/components/dashboard/live-workout/exercise-search-modal.tsx b/src/components/dashboard/live-workout/exercise-search-modal.tsx
+new file mode 100644
+index 0000000..6dced7a
+--- /dev/null
++++ b/src/components/dashboard/live-workout/exercise-search-modal.tsx
+@@ -0,0 +1,75 @@
++'use client';
++import { useState, useEffect, useRef } from 'react';
++import { useLiveWorkoutStore } from '@/store/use-live-workout-store';
++
++interface ExerciseResult {
++  id: string;
++  name: string;
++}
++
++export function ExerciseSearchModal({ onClose }: { onClose: () => void }) {
++  const [query, setQuery] = useState('');
++  const [results, setResults] = useState<ExerciseResult[]>([]);
++  const { addExercise } = useLiveWorkoutStore();
++  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
++
++  useEffect(() => {
++    const originalOverflow = document.body.style.overflow;
++    document.body.style.overflow = 'hidden';
++    return () => {
++      document.body.style.overflow = originalOverflow;
++    };
++  }, []);
++
++  // Mock static search for now, assumes we have an API or list of standard exercises
++  const handleSearch = (val: string) => {
++    setQuery(val);
++
++    if (searchTimeout.current) clearTimeout(searchTimeout.current);
++
++    searchTimeout.current = setTimeout(() => {
++      if (val.length < 2) return setResults([]);
++      // Fetch from a public API endpoint or use a local mock array for this task
++      const mockDb: ExerciseResult[] = [
++        { id: 'ex-1', name: 'Barbell Squat' },
++        { id: 'ex-2', name: 'Bench Press' },
++        { id: 'ex-3', name: 'Deadlift' }
++      ];
++      setResults(mockDb.filter(e => e.name.toLowerCase().includes(val.toLowerCase())));
++    }, 300);
++  };
++
++  const handleSelect = (ex: ExerciseResult) => {
++    addExercise({
++      id: crypto.randomUUID(),
++      exerciseId: ex.id,
++      name: ex.name,
++      sets: [{ id: crypto.randomUUID(), weight: 0, reps: 0, completed: false }]
++    });
++    onClose();
++  };
++
++  return (
++    <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex flex-col pt-20 px-6">
++      <div className="flex justify-between items-center mb-6">
++        <h2 className="font-outfit text-xl">Add Exercise</h2>
++        <button onClick={onClose}><span className="material-symbols-outlined">close</span></button>
++      </div>
++      <input 
++        type="text" 
++        value={query} 
++        onChange={e => handleSearch(e.target.value)} 
++        placeholder="Search exercises..." 
++        className="editorial-input py-4 text-[16px] mb-4 bg-surface-container border border-outline-variant px-4 rounded-md focus:border-secondary focus:outline-none"
++        autoFocus
++      />
++      <div className="flex flex-col gap-2 overflow-y-auto pb-32">
++        {results.map(r => (
++          <button key={r.id} onClick={() => handleSelect(r)} className="text-left p-4 bg-surface-container rounded-sm border border-outline-variant hover:border-secondary transition-colors">
++            {r.name}
++          </button>
++        ))}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/dashboard/live-workout/live-workout-list.tsx b/src/components/dashboard/live-workout/live-workout-list.tsx
+new file mode 100644
+index 0000000..e3cbd68
+--- /dev/null
++++ b/src/components/dashboard/live-workout/live-workout-list.tsx
+@@ -0,0 +1,62 @@
++'use client';
++import { useLiveWorkoutStore } from '@/store/use-live-workout-store';
++import { motion, AnimatePresence } from 'framer-motion';
++import { useState } from 'react';
++
++export function LiveWorkoutList() {
++  const { exercises, toggleSetComplete, removeExercise, updateSet } = useLiveWorkoutStore();
++  
++  return (
++    <div className="flex flex-col gap-6">
++      <AnimatePresence>
++        {exercises.map((ex, idx) => (
++          <motion.div 
++            key={ex.id}
++            initial={{ opacity: 0, height: 0 }}
++            animate={{ opacity: 1, height: 'auto' }}
++            exit={{ opacity: 0, height: 0 }}
++            drag="x"
++            dragConstraints={{ left: -100, right: 0 }}
++            onDragEnd={(e, { offset, velocity }) => {
++              if (offset.x < -50 || velocity.x < -500) removeExercise(ex.id);
++            }}
++            className="editorial-card p-6 bg-surface-container relative overflow-hidden"
++          >
++            <h3 className="font-outfit text-xl mb-4">{idx + 1}. {ex.name}</h3>
++            <div className="flex flex-col gap-2">
++              {ex.sets.map((set, sIdx) => (
++                <div key={set.id} className="flex items-center justify-between py-2 border-b border-outline-variant/50 last:border-0">
++                  <span className="font-label-caps text-[11px] text-on-surface-variant">Set {sIdx + 1}</span>
++                  <div className="flex gap-2">
++                    <input 
++                      type="number" 
++                      value={set.weight} 
++                      onChange={(e) => updateSet(ex.id, set.id, { weight: Number(e.target.value) })}
++                      className="w-16 bg-transparent border-b border-outline-variant text-center font-body-md text-on-surface focus:outline-none" 
++                    />
++                    <span className="text-on-surface-variant">kg</span>
++                    <span className="mx-2">├ù</span>
++                    <input 
++                      type="number" 
++                      value={set.reps} 
++                      onChange={(e) => updateSet(ex.id, set.id, { reps: Number(e.target.value) })}
++                      className="w-12 bg-transparent border-b border-outline-variant text-center font-body-md text-on-surface focus:outline-none" 
++                    />
++                  </div>
++                  <button onClick={() => toggleSetComplete(ex.id, set.id)} className="active:scale-95 transition-transform">
++                    <span className={`material-symbols-outlined text-[24px] ${set.completed ? 'text-secondary' : 'text-outline'}`}>
++                      {set.completed ? 'check_circle' : 'radio_button_unchecked'}
++                    </span>
++                  </button>
++                </div>
++              ))}
++            </div>
++            <div className="absolute top-0 right-[-100px] h-full flex items-center w-20 bg-error justify-center text-on-error opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
++              <span className="material-symbols-outlined">delete</span>
++            </div>
++          </motion.div>
++        ))}
++      </AnimatePresence>
++    </div>
++  );
++}
+diff --git a/src/components/dashboard/live-workout/live-workout-timer.tsx b/src/components/dashboard/live-workout/live-workout-timer.tsx
+new file mode 100644
+index 0000000..8ca45c5
+--- /dev/null
++++ b/src/components/dashboard/live-workout/live-workout-timer.tsx
+@@ -0,0 +1,27 @@
++'use client';
++import { useEffect, useState } from 'react';
++import { useLiveWorkoutStore } from '@/store/use-live-workout-store';
++
++export function LiveWorkoutTimer() {
++  const activeTimerStart = useLiveWorkoutStore(s => s.activeTimerStart);
++  const [elapsed, setElapsed] = useState(0);
++
++  useEffect(() => {
++    if (!activeTimerStart) return;
++    const interval = setInterval(() => {
++      setElapsed(Math.floor((Date.now() - activeTimerStart) / 1000));
++    }, 1000);
++    return () => clearInterval(interval);
++  }, [activeTimerStart]);
++
++  if (!activeTimerStart) return null;
++  const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
++  const secs = (elapsed % 60).toString().padStart(2, '0');
++
++  return (
++    <div className="fixed top-20 right-4 bg-surface-container-high border border-outline-variant rounded-full px-4 py-2 flex items-center gap-2 z-50 shadow-sm animate-fade-in">
++      <span className="material-symbols-outlined text-[16px] text-secondary">timer</span>
++      <span className="font-outfit font-bold text-on-surface tracking-widest">{mins}:{secs}</span>
++    </div>
++  );
++}
+diff --git a/src/store/use-live-workout-store.ts b/src/store/use-live-workout-store.ts
+new file mode 100644
+index 0000000..4a07882
+--- /dev/null
++++ b/src/store/use-live-workout-store.ts
+@@ -0,0 +1,64 @@
++import { create } from 'zustand';
++import { persist } from 'zustand/middleware';
++
++export interface LiveSet {
++  id: string;
++  weight: number;
++  reps: number;
++  completed: boolean;
++}
++
++export interface LiveExercise {
++  id: string;
++  exerciseId: string;
++  name: string;
++  sets: LiveSet[];
++}
++
++export interface LiveWorkoutState {
++  isActive: boolean;
++  workoutPlanId?: string;
++  workoutStartTime: number | null;
++  exercises: LiveExercise[];
++  activeTimerStart: number | null;
++  startWorkout: (planId?: string, initialExercises?: LiveExercise[]) => void;
++  toggleSetComplete: (exerciseId: string, setId: string) => void;
++  updateSet: (exerciseId: string, setId: string, updates: Partial<LiveSet>) => void;
++  addExercise: (exercise: LiveExercise) => void;
++  removeExercise: (exerciseId: string) => void;
++  finishWorkout: () => void;
++  cancelWorkout: () => void;
++}
++
++export const useLiveWorkoutStore = create<LiveWorkoutState>()(
++  persist(
++    (set, get) => ({
++      isActive: false,
++      exercises: [],
++      workoutStartTime: null,
++      activeTimerStart: null,
++      startWorkout: (planId, initial = []) => set({ isActive: true, workoutPlanId: planId, exercises: initial, activeTimerStart: null, workoutStartTime: Date.now() }),
++      toggleSetComplete: (eId, sId) => set((state) => {
++        const exs = state.exercises.map(e => {
++          if (e.id !== eId) return e;
++          return {
++            ...e,
++            sets: e.sets.map(s => s.id === sId ? { ...s, completed: !s.completed } : s)
++          };
++        });
++        const newlyCompleted = exs.find(e => e.id === eId)?.sets.find(s => s.id === sId)?.completed;
++        return { exercises: exs, activeTimerStart: newlyCompleted ? Date.now() : state.activeTimerStart };
++      }),
++      updateSet: (eId, sId, updates) => set((state) => ({
++        exercises: state.exercises.map(e => e.id === eId ? {
++          ...e, sets: e.sets.map(s => s.id === sId ? { ...s, ...updates } : s)
++        } : e)
++      })),
++      addExercise: (ex) => set((state) => ({ exercises: [...state.exercises, ex] })),
++      removeExercise: (eId) => set((state) => ({ exercises: state.exercises.filter(e => e.id !== eId) })),
++      finishWorkout: () => set({ isActive: false, exercises: [], activeTimerStart: null, workoutPlanId: undefined, workoutStartTime: null }),
++      cancelWorkout: () => set({ isActive: false, exercises: [], activeTimerStart: null, workoutPlanId: undefined, workoutStartTime: null }),
++    }),
++    { name: 'live-workout-storage' }
++  )
++);

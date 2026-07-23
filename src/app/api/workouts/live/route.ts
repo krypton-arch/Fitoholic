@@ -29,29 +29,27 @@ export async function POST(req: Request) {
   const { exercises, duration } = parsed.data;
 
   try {
-    const workout = await prisma.workout.create({
-      data: {
-        userId: session.user.id,
-        name: 'Live Session',
-        date: new Date(),
-        duration: duration || 0,
-        exercises: {
-          create: exercises.map((ex, idx) => ({
+    const logs = [];
+    for (const ex of exercises) {
+      for (const set of ex.sets) {
+        if (set.completed) {
+          logs.push({
+            userId: session.user.id,
             exerciseId: ex.exerciseId,
-            order: idx,
-            sets: {
-              create: ex.sets.map((set, sIdx) => ({
-                setNumber: sIdx + 1,
-                reps: set.reps,
-                weightKg: set.weight,
-                completed: set.completed
-              }))
-            }
-          }))
+            sets: 1,
+            reps: set.reps,
+            weightKg: set.weight,
+            performedAt: new Date(),
+          });
         }
       }
-    });
-    return NextResponse.json(workout);
+    }
+    
+    if (logs.length > 0) {
+      await prisma.workoutLog.createMany({ data: logs });
+    }
+    
+    return NextResponse.json({ success: true, loggedSets: logs.length });
   } catch (e) {
     console.error('[WORKOUT_LIVE_POST]', e);
     return NextResponse.json({ error: 'Failed to save workout' }, { status: 500 });
