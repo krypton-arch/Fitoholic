@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useSession, signOut } from 'next-auth/react';
 import { useToast } from '@/components/ui/toast-provider';
 import { format, parseISO } from 'date-fns';
+import { UpgradeButton } from '@/components/premium/upgrade-button';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional().or(z.literal('')),
@@ -184,6 +185,11 @@ export default function ProfileForm({
             <span className="font-label-caps text-[10px] tracking-widest text-on-surface-variant uppercase">
               Since {format(parseISO(memberSince), 'MMM yyyy')}
             </span>
+            {!isPremium && role !== 'ADMIN' && (
+              <div className="ml-auto">
+                <UpgradeButton user={{ name: initialName, email: initialEmail }} />
+              </div>
+            )}
           </div>
         </div>
       </div>

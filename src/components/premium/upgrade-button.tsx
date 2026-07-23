@@ -84,9 +84,9 @@ export function UpgradeButton({ user }: { user: { name: string; email: string } 
     <button
       onClick={handleUpgrade}
       disabled={loading}
-      className="relative overflow-hidden rounded-xl bg-white/10 px-6 py-3 text-lg font-semibold text-white shadow-[0_4px_30px_rgba(0,0,0,0.1)] backdrop-blur-md border border-white/20 transition-all hover:bg-white/20 active:scale-95 disabled:opacity-50"
+      className="editorial-button font-label-caps text-[11px] uppercase tracking-widest px-6 py-2 border border-secondary text-secondary hover:bg-secondary hover:text-on-secondary transition-all active:scale-[0.99] disabled:opacity-50"
     >
-      {loading ? "Processing..." : "Upgrade to Premium (₹499)"}
+      {loading ? "Processing..." : "Unlock Pro"}
     </button>
   );
 }
