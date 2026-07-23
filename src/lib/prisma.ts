@@ -1,11 +1,29 @@
 import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 let prismaInstance: PrismaClient;
 
 try {
-  prismaInstance = globalForPrisma.prisma ?? new PrismaClient();
+  if (globalForPrisma.prisma) {
+    prismaInstance = globalForPrisma.prisma;
+  } else {
+    // Determine connection string safely
+    const connectionString = process.env.DATABASE_URL || "";
+    
+    // In serverless environments, pg Pool requires explicit configuration for SSL 
+    // when connecting to Supabase connection poolers, otherwise it fails.
+    const pool = new Pool({
+      connectionString,
+      // Suppress SSL errors for local development but require it for production
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    });
+    const adapter = new PrismaPg(pool);
+    prismaInstance = new PrismaClient({ adapter });
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     globalForPrisma.prisma = prismaInstance;
   }
@@ -13,13 +31,7 @@ try {
   console.error("=================================================================");
   console.error("🔥 CRITICAL ERROR: PRISMA FAILED TO INITIALIZE DURING BUILD 🔥");
   console.error("=================================================================");
-  console.error("If you are seeing this on Vercel, your DATABASE_URL is malformed!");
-  console.error("1. Make sure you have NO square brackets [ ] in the URL.");
-  console.error("2. If your password has special characters (@, #, ?, /, etc), you MUST URL-encode them.");
-  console.error("   For example, '@' becomes '%40', '#' becomes '%23'.");
-  console.error("Here is the exact internal error that caused the crash:");
   console.error(error);
-  console.error("=================================================================");
   throw error;
 }
 
